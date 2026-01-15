@@ -37,3 +37,24 @@ History is stored at `~/.config/llm_council/history.jsonl` by default.
 
 - Set `providers.anthropic.thinking` and `providers.openai.reasoning` in the
   config to enable extended thinking features where supported.
+
+## Getting started (new terminal session)
+
+From a fresh terminal, run everything from the repo root:
+
+```bash
+cd /Users/zhl/Documents/02_Area_Code/llm_council_cli_codex
+source .venv/bin/activate
+```
+
+Then run a debate:
+
+```bash
+python -m llm_council ask "Your question here"
+```
+
+If you prefer not to activate the venv, you can run:
+
+```bash
+./.venv/bin/python -m llm_council ask "Your question here"
+```
