@@ -39,7 +39,7 @@ class OpenAIProvider(Provider):
             input_messages.append(
                 {
                     "role": message["role"],
-                    "content": [{"type": "text", "text": message["content"]}],
+                    "content": [{"type": "input_text", "text": message["content"]}],
                 }
             )
         payload: Dict[str, Any] = {
@@ -48,7 +48,10 @@ class OpenAIProvider(Provider):
         }
         if "max_output_tokens" in request_cfg:
             payload["max_output_tokens"] = request_cfg["max_output_tokens"]
-        if "temperature" in request_cfg:
+        allow_temperature = provider_cfg.get("allow_temperature")
+        if allow_temperature is None:
+            allow_temperature = not model.startswith("gpt-5")
+        if allow_temperature and "temperature" in request_cfg:
             payload["temperature"] = request_cfg["temperature"]
         if provider_cfg.get("reasoning"):
             payload["reasoning"] = provider_cfg["reasoning"]

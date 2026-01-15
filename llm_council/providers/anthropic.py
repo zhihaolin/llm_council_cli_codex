@@ -49,16 +49,24 @@ class AnthropicProvider(Provider):
                     "content": [{"type": "text", "text": message["content"]}],
                 }
             )
+        max_tokens = request_cfg.get("max_output_tokens", 1024)
         payload: Dict[str, Any] = {
             "model": model,
-            "max_tokens": request_cfg.get("max_output_tokens", 1024),
-            "temperature": request_cfg.get("temperature", 0.2),
+            "max_tokens": max_tokens,
             "messages": payload_messages,
         }
         if system_text:
             payload["system"] = system_text
-        if provider_cfg.get("thinking"):
-            payload["thinking"] = provider_cfg["thinking"]
+        thinking_cfg = provider_cfg.get("thinking")
+        if thinking_cfg:
+            payload["thinking"] = thinking_cfg
+            budget = thinking_cfg.get("budget_tokens")
+            if isinstance(budget, int) and max_tokens <= budget:
+                payload["max_tokens"] = budget + 1
+            # Anthropic requires temperature=1 when extended thinking is enabled.
+            payload["temperature"] = 1
+        else:
+            payload["temperature"] = request_cfg.get("temperature", 0.2)
         payload.update(provider_cfg.get("request_overrides", {}))
         headers = {
             "x-api-key": api_key,
