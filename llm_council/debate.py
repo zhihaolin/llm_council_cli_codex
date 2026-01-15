@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import sys
 from typing import Any, Dict, List
 
 from .config import resolve_api_key
@@ -64,6 +65,7 @@ def run_debate(prompt: str, cfg: Dict[str, Any]) -> DebateResult:
         raise ValueError("No council members configured.")
     round1 = []
     for member in members:
+        announce_call("Round 1", member)
         reply = call_member(member, prompt, ROUND1_SYSTEM, request_cfg, cfg)
         round1.append(reply)
     round2 = []
@@ -83,6 +85,7 @@ def run_debate(prompt: str, cfg: Dict[str, Any]) -> DebateResult:
                 "Provide your rebuttal and improved answer.",
             ]
         )
+        announce_call("Round 2", member)
         reply = call_member(member, rebuttal_prompt, ROUND2_SYSTEM, request_cfg, cfg)
         round2.append(reply)
 
@@ -104,6 +107,7 @@ def run_debate(prompt: str, cfg: Dict[str, Any]) -> DebateResult:
             "Synthesize the final answer.",
         ]
     )
+    announce_call("Moderator", moderator_member)
     moderator_reply = call_member(
         moderator_member, moderator_prompt, MODERATOR_SYSTEM, request_cfg, cfg
     )
@@ -149,3 +153,7 @@ def call_member(
         return MemberReply(member=member, text=result.text)
     except ProviderError as exc:
         return MemberReply(member=member, text="", error=str(exc))
+
+
+def announce_call(stage: str, member: Member) -> None:
+    print(f"{stage} -> {member.label()}", file=sys.stderr, flush=True)
