@@ -31,6 +31,12 @@ python -m llm_council repl
 python -m llm_council models
 ```
 
+To get JSON output:
+
+```bash
+python -m llm_council ask "Design a migration plan for a monolith to services." --format json
+```
+
 History is stored at `~/.config/llm_council/history.jsonl` by default.
 
 ## Notes

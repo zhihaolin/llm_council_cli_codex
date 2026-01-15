@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
+import textwrap
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -34,10 +36,22 @@ def main() -> None:
     ask_parser.add_argument("prompt", help="Prompt to send to the council")
     ask_parser.add_argument("--config", help="Path to config file")
     ask_parser.add_argument("--no-history", action="store_true", help="Disable history logging")
+    ask_parser.add_argument(
+        "--format",
+        choices=["text", "json"],
+        default="text",
+        help="Output format for results",
+    )
 
     repl_parser = subparsers.add_parser("repl", help="Interactive council REPL")
     repl_parser.add_argument("--config", help="Path to config file")
     repl_parser.add_argument("--no-history", action="store_true", help="Disable history logging")
+    repl_parser.add_argument(
+        "--format",
+        choices=["text", "json"],
+        default="text",
+        help="Output format for results",
+    )
 
     models_parser = subparsers.add_parser("models", help="List provider models")
     models_parser.add_argument("--config", help="Path to config file")
@@ -58,14 +72,14 @@ def main() -> None:
         except ValueError as exc:
             print(f"Configuration error: {exc}", file=sys.stderr)
             sys.exit(1)
-        print_debate(result)
+        print_output(result, output_format=args.format)
         if not args.no_history:
             write_history(result, cfg)
         return
 
     if args.command == "repl":
         cfg = load_config(args.config)
-        run_repl(cfg, no_history=args.no_history)
+        run_repl(cfg, no_history=args.no_history, output_format=args.format)
         return
 
     if args.command == "models":
@@ -81,7 +95,7 @@ def main() -> None:
     parser.print_help()
 
 
-def run_repl(cfg: Dict[str, Any], no_history: bool) -> None:
+def run_repl(cfg: Dict[str, Any], no_history: bool, output_format: str) -> None:
     print("LLM Council REPL. Type 'exit' or Ctrl-D to quit.")
     while True:
         try:
@@ -98,7 +112,7 @@ def run_repl(cfg: Dict[str, Any], no_history: bool) -> None:
         except ValueError as exc:
             print(f"Configuration error: {exc}")
             continue
-        print_debate(result)
+        print_output(result, output_format=output_format)
         if not no_history:
             write_history(result, cfg)
 
@@ -138,7 +152,18 @@ def write_config(path: Path, force: bool) -> None:
 def write_history(result: DebateResult, cfg: Dict[str, Any]) -> None:
     history_path = cfg.get("history", {}).get("path", "~/.config/llm_council/history.jsonl")
     history_path = expand_path(history_path)
-    record = {
+    append_history(serialize_result(result), history_path)
+
+
+def print_output(result: DebateResult, output_format: str) -> None:
+    if output_format == "json":
+        print(json.dumps(serialize_result(result), ensure_ascii=True, indent=2))
+        return
+    print_debate(result)
+
+
+def serialize_result(result: DebateResult) -> Dict[str, Any]:
+    return {
         "prompt": result.prompt,
         "members": [
             {"provider": reply.member.provider, "model": reply.member.model}
@@ -166,24 +191,26 @@ def write_history(result: DebateResult, cfg: Dict[str, Any]) -> None:
             "error": result.moderator.error if result.moderator else "missing moderator",
         },
     }
-    append_history(record, history_path)
 
 
 def print_debate(result: DebateResult) -> None:
-    print("== Round 1 ==")
-    print_replies(result.round1)
-    print("")
-    print("== Round 2 (rebuttals) ==")
-    print_replies(result.round2)
-    print("")
-    print("== Moderator ==")
-    if result.moderator:
-        print_reply(result.moderator)
+    print_section("Round 1", result.round1)
+    print_section("Round 2 (Rebuttals)", result.round2)
+    print_section("Moderator", [result.moderator] if result.moderator else [])
 
 
-def print_replies(replies: List[Any]) -> None:
+def print_section(title: str, replies: List[Any]) -> None:
+    divider = "=" * max(10, len(title) + 6)
+    print(divider)
+    print(f"== {title} ==")
+    print(divider)
+    if not replies:
+        print("(no responses)")
+        print("")
+        return
     for reply in replies:
         print_reply(reply)
+        print("")
 
 
 def print_reply(reply: Any) -> None:
@@ -191,7 +218,10 @@ def print_reply(reply: Any) -> None:
     if reply.error:
         print(f"[{label}] ERROR: {reply.error}")
         return
-    print(f"[{label}] {reply.text}")
+    text = reply.text.strip() if reply.text else "(no response)"
+    indented = textwrap.indent(text, "  ")
+    print(f"[{label}]")
+    print(indented)
 
 
 if __name__ == "__main__":
