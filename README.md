@@ -37,6 +37,12 @@ To get JSON output:
 python -m llm_council ask "Design a migration plan for a monolith to services." --format json
 ```
 
+To disable colorized output:
+
+```bash
+python -m llm_council ask "Design a migration plan for a monolith to services." --color never
+```
+
 History is stored at `~/.config/llm_council/history.jsonl` by default.
 
 ## Notes
